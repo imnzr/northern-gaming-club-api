@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
 )
 
 func DatabaseConnection() (*sql.DB, error) {
@@ -16,31 +17,27 @@ func DatabaseConnection() (*sql.DB, error) {
 		}
 	}
 
+	// Retrieve database credentials from environment variables
 	DBUser := os.Getenv("DBUser")
 	DBPass := os.Getenv("DBPass")
 	DBHost := os.Getenv("DBHost")
 	DBPort := os.Getenv("DBPort")
 	DBName := os.Getenv("DBName")
 
+	// Create the data source name
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		DBUser, DBPass, DBHost, DBPort, DBName)
 
-	db, err := sql.Open("mysql", dsn)
+	// Open the database connection using GORM
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("error connection to database: %w", err)
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	time.Sleep(5 * time.Second)
-
-	db.SetConnMaxIdleTime(60 * time.Minute)
-	db.SetConnMaxLifetime(60 * time.Minute)
-	db.SetMaxIdleConns(50)
-	db.SetMaxOpenConns(100)
-
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed connecting to database: %w", err)
+	sqlDb, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get db instance: %v", err)
 	}
 
-	return db, nil
-
+	return sqlDb, err
 }
